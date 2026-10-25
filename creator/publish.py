@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import urllib.error
 import urllib.request
 import uuid
 import zipfile
@@ -40,8 +41,12 @@ def export_zip(store, pid):
 def import_zip(store, source, folder_id=None):
     """source: path or http(s) URL of a bundle ZIP. Returns the new project summary."""
     if source.startswith(("http://", "https://")):
-        with urllib.request.urlopen(source) as r:
-            data = r.read()
+        try:
+            with urllib.request.urlopen(source) as r:
+                data = r.read()
+        except urllib.error.URLError:
+            # python.org builds on macOS ship without root certificates; curl uses the system store
+            data = subprocess.run(["curl", "-fsSL", source], capture_output=True, check=True).stdout
     else:
         with open(source, "rb") as f:
             data = f.read()
